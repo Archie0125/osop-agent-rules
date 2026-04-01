@@ -16,6 +16,13 @@ Drop-in OSOP session logging for **every major AI coding agent**. One install gi
 | **Cline** | `.clinerules/osop-session-logging.md` | Auto / Manual |
 | **Roo Code** | `.roo/rules/osop-session-logging.md` | Auto / Manual |
 | **Devin** | `playbooks/osop-session-logging.md` | Auto / Manual |
+| **Obsidian** | `.obsidian/copilot-custom-prompts/osop-session-logging.md` | Auto / Manual |
+| **Zed** | `.rules` (project root) | Auto / Manual |
+| **Sourcegraph Amp** | `AGENT.md` | Auto / Manual |
+| **Trae** | `project_rules.md` | Auto / Manual |
+| **PearAI** | Custom command config | Manual |
+| **Sweep AI** | `.claude/skills/osop-session-logging/SKILL.md` | Auto / Manual |
+| **SWE-agent** | `.swe-agent/osop-config.yaml` | Manual |
 | **Claude Code** | `CLAUDE.md` | [Plugin](https://github.com/Archie0125/osop-skill) |
 | **OpenClaw** | ClawHub skill | `clawhub install osop` |
 | **GitHub Copilot** | MCP server | [osop-mcp](https://github.com/Archie0125/osop-mcp) |
@@ -133,6 +140,42 @@ clawhub install osop-review
 clawhub install osop-optimize
 ```
 
+### Obsidian
+
+```bash
+mkdir -p .obsidian/copilot-custom-prompts
+cp obsidian/osop-session-logging.md .obsidian/copilot-custom-prompts/
+```
+
+### Zed
+
+```bash
+cp zed/osop-session-logging.md .rules
+```
+
+Or open Zed's Rules Library (`Cmd-Alt-L`) and paste the content.
+
+### Sourcegraph Amp
+
+```bash
+cp amp/AGENT.md .
+```
+
+### Trae
+
+```bash
+cp trae/project_rules.md .
+```
+
+### SWE-agent
+
+```bash
+mkdir -p .swe-agent
+cp swe-agent/osop-config.yaml .swe-agent/
+```
+
+Reference via `--config .swe-agent/osop-config.yaml`.
+
 ### GitHub Copilot
 
 Use the MCP server — see [copilot/README.md](copilot/README.md).
@@ -188,6 +231,13 @@ osop-agent-rules/
 ├── cline/                   # Cline rule
 ├── roo-code/                # Roo Code rule
 ├── devin/                   # Devin playbook
+├── obsidian/                # Obsidian Copilot prompt
+├── zed/                     # Zed editor rules
+├── amp/                     # Sourcegraph Amp AGENT.md
+├── trae/                    # Trae project rules
+├── pearai/                  # PearAI custom command
+├── sweep/                   # Sweep AI SKILL.md
+├── swe-agent/               # SWE-agent YAML config
 └── copilot/                 # Copilot MCP integration guide
 ```
 

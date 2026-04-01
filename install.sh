@@ -42,6 +42,13 @@ Platforms:
   --roo-code    Roo Code (.roo/rules/)
   --devin       Devin (playbooks/)
   --claude      Claude Code (CLAUDE.md)
+  --obsidian    Obsidian Copilot (.obsidian/copilot-custom-prompts/)
+  --zed         Zed (.rules or rules library)
+  --amp         Sourcegraph Amp (AGENT.md)
+  --trae        Trae (project_rules.md)
+  --pearai      PearAI (custom commands)
+  --sweep       Sweep AI (.claude/skills/)
+  --swe-agent   SWE-agent (YAML config)
 
 If no platform is specified, auto-detects based on existing config directories.
 
@@ -69,6 +76,13 @@ while [[ $# -gt 0 ]]; do
     --roo-code)  TARGETS+=(roo-code); shift ;;
     --devin)     TARGETS+=(devin); shift ;;
     --claude)    TARGETS+=(claude); shift ;;
+    --obsidian)  TARGETS+=(obsidian); shift ;;
+    --zed)       TARGETS+=(zed); shift ;;
+    --amp)       TARGETS+=(amp); shift ;;
+    --trae)      TARGETS+=(trae); shift ;;
+    --pearai)    TARGETS+=(pearai); shift ;;
+    --sweep)     TARGETS+=(sweep); shift ;;
+    --swe-agent) TARGETS+=(swe-agent); shift ;;
     -h|--help)   usage ;;
     *)           echo "Unknown option: $1"; usage ;;
   esac
@@ -120,6 +134,31 @@ detect_platforms() {
   # Devin (check for .devin or devin config)
   if [ -d ".devin" ]; then
     detected+=(devin)
+  fi
+
+  # Obsidian
+  if [ -d ".obsidian" ]; then
+    detected+=(obsidian)
+  fi
+
+  # Zed
+  if command -v zed &>/dev/null || [ -f ".rules" ]; then
+    detected+=(zed)
+  fi
+
+  # Amp
+  if command -v amp &>/dev/null || [ -f "AGENT.md" ]; then
+    detected+=(amp)
+  fi
+
+  # Trae
+  if [ -f "project_rules.md" ] || [ -f "user_rules.md" ]; then
+    detected+=(trae)
+  fi
+
+  # Sweep
+  if [ -d ".claude/skills" ]; then
+    detected+=(sweep)
   fi
 
   echo "${detected[@]}"
@@ -219,6 +258,62 @@ install_platform() {
         install_file "$SCRIPT_DIR/../osop-openclaw-skill/CLAUDE.md" "CLAUDE.md" "Claude Code CLAUDE.md"
       fi
       ;;
+    obsidian)
+      echo -e "${BLUE}Obsidian${NC}"
+      install_file "$SCRIPT_DIR/obsidian/osop-session-logging.md" \
+                   ".obsidian/copilot-custom-prompts/osop-session-logging.md" \
+                   "Obsidian Copilot prompt"
+      ;;
+    zed)
+      echo -e "${BLUE}Zed${NC}"
+      install_file "$SCRIPT_DIR/zed/osop-session-logging.md" \
+                   ".rules" \
+                   "Zed rules"
+      ;;
+    amp)
+      echo -e "${BLUE}Sourcegraph Amp${NC}"
+      if [ -f "AGENT.md" ] && [ "$FORCE" = false ]; then
+        echo -e "  ${YELLOW}EXISTS${NC} AGENT.md — appending OSOP section"
+        echo "" >> AGENT.md
+        echo "---" >> AGENT.md
+        echo "" >> AGENT.md
+        cat "$SCRIPT_DIR/amp/AGENT.md" >> AGENT.md
+        echo -e "  ${GREEN}OK${NC} AGENT.md (appended)"
+      else
+        install_file "$SCRIPT_DIR/amp/AGENT.md" "AGENT.md" "Amp AGENT.md"
+      fi
+      ;;
+    trae)
+      echo -e "${BLUE}Trae${NC}"
+      if [ -f "project_rules.md" ] && [ "$FORCE" = false ]; then
+        echo -e "  ${YELLOW}EXISTS${NC} project_rules.md — appending OSOP section"
+        echo "" >> project_rules.md
+        echo "---" >> project_rules.md
+        echo "" >> project_rules.md
+        cat "$SCRIPT_DIR/trae/project_rules.md" >> project_rules.md
+        echo -e "  ${GREEN}OK${NC} project_rules.md (appended)"
+      else
+        install_file "$SCRIPT_DIR/trae/project_rules.md" "project_rules.md" "Trae project_rules.md"
+      fi
+      ;;
+    pearai)
+      echo -e "${BLUE}PearAI${NC}"
+      install_file "$SCRIPT_DIR/pearai/osop-session-logging.md" \
+                   ".pearai/osop-session-logging.md" \
+                   "PearAI instructions"
+      ;;
+    sweep)
+      echo -e "${BLUE}Sweep AI${NC}"
+      install_file "$SCRIPT_DIR/sweep/SKILL.md" \
+                   ".claude/skills/osop-session-logging/SKILL.md" \
+                   "Sweep AI skill"
+      ;;
+    swe-agent)
+      echo -e "${BLUE}SWE-agent${NC}"
+      install_file "$SCRIPT_DIR/swe-agent/osop-config.yaml" \
+                   ".swe-agent/osop-config.yaml" \
+                   "SWE-agent config"
+      ;;
     *)
       echo -e "  ${RED}UNKNOWN${NC} platform: $platform"
       ;;
@@ -232,7 +327,7 @@ echo ""
 
 # Determine targets
 if [ "$ALL" = true ]; then
-  TARGETS=(cursor codex windsurf continue aider cline roo-code devin claude)
+  TARGETS=(cursor codex windsurf continue aider cline roo-code devin claude obsidian zed amp trae pearai sweep swe-agent)
 elif [ ${#TARGETS[@]} -eq 0 ]; then
   DETECTED=$(detect_platforms)
   if [ -z "$DETECTED" ]; then
