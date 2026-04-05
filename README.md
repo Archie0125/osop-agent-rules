@@ -2,7 +2,9 @@
 
 [![OSOP Compatible](https://img.shields.io/badge/OSOP-compatible-blue)](https://osop.ai)
 
-Drop-in OSOP session logging for **every major AI coding agent**. One install gives your AI agent the ability to produce structured workflow records (`.osop` + `.osoplog.yaml`) after every significant task.
+**Part of The Loop.** Drop-in .osoplog generation for 18 AI coding platforms.
+
+One install, your AI agent produces structured execution records after every task. Claude Code, Cursor, Codex, Windsurf, Copilot, and 13 more. Start The Loop with one command: `./install.sh`
 
 ## Supported Platforms
 
