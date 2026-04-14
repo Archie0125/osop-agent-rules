@@ -1,95 +1,67 @@
 ---
 name: osop-report
-description: Convert .osop and .osoplog.yaml into standalone HTML report with dark mode and expandable nodes
-version: 1.2.0
-emoji: "\U0001F4CA"
+description: Generate a standalone HTML report from .osop and .osoplog files using osop view
+version: 2.0.0
 homepage: https://osop.ai
-argument-hint: <file.osop> [file.osoplog.yaml]
-allowed-tools: Read, Bash, Write
+argument-hint: <file.sop or file.osop> [--lang zh-TW]
+allowed-tools: Read, Bash, Write, Glob
 metadata:
   openclaw:
     requires:
-      anyBins:
-        - python3
-        - python
-      config:
-        - ~/.osop/config.yaml
-    install:
-      - kind: uv
-        package: pyyaml
+      bins:
+        - bash
+    install: []
     always: false
 user-invocable: true
-disable-model-invocation: false
 ---
-
-## Preamble (run first)
-
-```bash
-mkdir -p ~/.osop/analytics ~/.osop/projects
-_OSOP_TEL=$(cat ~/.osop/config.yaml 2>/dev/null | grep telemetry | awk '{print $2}' || echo "unset")
-_OSOP_TEL_PROMPTED=$([ -f ~/.osop/.telemetry-prompted ] && echo "yes" || echo "no")
-_OSOP_VERSION="1.1.0"
-_OSOP_SESSION_ID="$$-$(date +%s)"
-_OSOP_TEL_START=$(date +%s)
-echo "OSOP_TELEMETRY: $_OSOP_TEL"
-echo "OSOP_TEL_PROMPTED: $_OSOP_TEL_PROMPTED"
-${CLAUDE_SKILL_DIR}/../../bin/osop-timeline-log --skill osop-report --event started --session "$_OSOP_SESSION_ID" 2>/dev/null || true
-echo "{\"skill\":\"osop-report\",\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > ~/.osop/analytics/.pending-"$_OSOP_SESSION_ID" 2>/dev/null || true
-_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr ' ' '-' || echo "unknown")
-[ -f ~/.osop/projects/"$_SLUG"/learnings.jsonl ] && echo "--- Recent OSOP learnings ---" && tail -3 ~/.osop/projects/"$_SLUG"/learnings.jsonl 2>/dev/null || true
-```
-
-If `OSOP_TEL_PROMPTED` is `no`: use AskUserQuestion — same prompt as osop-log preamble.
 
 # OSOP Report Generator
 
-Convert workflow definition and/or execution log into a self-contained HTML report.
+Convert workflow definitions and execution logs into a browsable HTML report.
 
 ## Arguments
 
 $ARGUMENTS
 
-If no arguments provided, look for the most recent files in `sessions/` directory.
+If no arguments provided, look for the most recent `.sop` file in `sessions/`.
 
 ## Steps
 
-1. **Find the files** — read the .osop file (first argument). If a .osoplog.yaml is also provided (second argument), read that too.
+1. **Find the files** — identify the .sop file (or create a temporary one referencing the .osop)
 
-2. **Generate the HTML report** by running:
+2. **Generate the HTML report** using `osop view`:
    ```bash
-   python ${CLAUDE_SKILL_DIR}/../../scripts/osop-report.py <file.osop> [file.osoplog.yaml] -o <output.html>
-   ```
+   # From a .sop file (recommended — supports multiple workflows)
+   osop view <file.sop> -o <output.html>
    
-   If Python/PyYAML is not available, generate the HTML inline using this structure:
-   - Read both YAML files
-   - Create a self-contained HTML with inline CSS
-   - Each node becomes an expandable `<details>` element
-   - Color-code by node type (orange=human, purple=agent, blue=api/cli)
-   - Show status badges, duration bars, tool usage, AI metadata, reasoning blocks
-   - Include dark mode via `prefers-color-scheme`
+   # With Traditional Chinese
+   osop view <file.sop> -o <output.html> --lang zh-TW
+   ```
 
-3. **Save the HTML** next to the source file with `-report.html` suffix.
+   If `osop` is not in PATH, use `python -m osop.cli view`.
 
-4. **Tell the user** the file path so they can open it in a browser.
+3. **If only .osop + .osoplog provided** (no .sop), create a temporary .sop:
+   ```yaml
+   sop_version: "1.0"
+   id: "temp-report"
+   name: "<workflow name>"
+   sections:
+     - name: "Workflow"
+       workflows:
+         - ref: "./<file.osop.yaml>"
+           title: "<workflow name>"
+   ```
+   Then run `osop view` on it.
 
-## Output format
+4. **Tell the user** the output file path so they can open it in a browser.
 
-The HTML report includes:
-- Header: workflow name, status badge, duration, cost, node count
-- Error banner: any failed nodes listed prominently
-- Node list: expandable cards with type badge, duration bar, inputs/outputs, AI metadata, tool usage, reasoning
-- Dark mode responsive, <15KB, zero external dependencies
+## Features
 
-## Epilogue (run last)
-
-```bash
-_OSOP_TEL_END=$(date +%s)
-_OSOP_TEL_DUR=$(( _OSOP_TEL_END - _OSOP_TEL_START ))
-${CLAUDE_SKILL_DIR}/../../bin/osop-timeline-log --skill osop-report --event completed --duration "$_OSOP_TEL_DUR" --outcome "OUTCOME" --session "$_OSOP_SESSION_ID" 2>/dev/null || true
-${CLAUDE_SKILL_DIR}/../../bin/osop-telemetry-log --skill osop-report --duration "$_OSOP_TEL_DUR" --outcome "OUTCOME" --session-id "$_OSOP_SESSION_ID" 2>/dev/null &
-```
-
-Replace `OUTCOME` with `success` or `error`. If the report generation fails, log a learning:
-```bash
-${CLAUDE_SKILL_DIR}/../../bin/osop-learnings-log '{"skill":"osop-report","type":"pitfall","key":"ERROR_KEY","insight":"WHAT_WENT_WRONG","confidence":8,"source":"observed"}' 2>/dev/null || true
-```
+The generated HTML includes:
+- Visual workflow display with node type badges and status colors
+- Side-by-side .osop definition and .osoplog execution view
+- Multi-run tabs when multiple .osoplog files exist
+- Raw YAML view toggle
+- Copy-to-clipboard for YAML content
+- Light theme matching osop.ai website style
+- Zero external dependencies — single self-contained HTML file

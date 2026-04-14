@@ -1,8 +1,7 @@
 ---
 name: osop-review
-description: Review .osop/.osoplog for security risks, permission gaps, and destructive commands
-version: 1.2.0
-emoji: "\U0001F6E1\uFE0F"
+description: Review a .osop or .osoplog file for security risks, permission gaps, and missing safeguards
+version: 2.0.0
 homepage: https://osop.ai
 argument-hint: <path-to-osop-or-osoplog-file>
 allowed-tools: Read, Glob, Grep, Bash
@@ -11,32 +10,10 @@ metadata:
     requires:
       bins:
         - bash
-      config:
-        - ~/.osop/config.yaml
     install: []
     always: false
 user-invocable: true
-disable-model-invocation: false
 ---
-
-## Preamble (run first)
-
-```bash
-mkdir -p ~/.osop/analytics ~/.osop/projects
-_OSOP_TEL=$(cat ~/.osop/config.yaml 2>/dev/null | grep telemetry | awk '{print $2}' || echo "unset")
-_OSOP_TEL_PROMPTED=$([ -f ~/.osop/.telemetry-prompted ] && echo "yes" || echo "no")
-_OSOP_VERSION="1.1.0"
-_OSOP_SESSION_ID="$$-$(date +%s)"
-_OSOP_TEL_START=$(date +%s)
-echo "OSOP_TELEMETRY: $_OSOP_TEL"
-echo "OSOP_TEL_PROMPTED: $_OSOP_TEL_PROMPTED"
-${CLAUDE_SKILL_DIR}/../../bin/osop-timeline-log --skill osop-review --event started --session "$_OSOP_SESSION_ID" 2>/dev/null || true
-echo "{\"skill\":\"osop-review\",\"ts\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > ~/.osop/analytics/.pending-"$_OSOP_SESSION_ID" 2>/dev/null || true
-_SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)" 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr ' ' '-' || echo "unknown")
-[ -f ~/.osop/projects/"$_SLUG"/learnings.jsonl ] && echo "--- Recent OSOP learnings ---" && tail -3 ~/.osop/projects/"$_SLUG"/learnings.jsonl 2>/dev/null || true
-```
-
-If `OSOP_TEL_PROMPTED` is `no`: use AskUserQuestion — same prompt as osop-log preamble.
 
 # OSOP Workflow Reviewer
 
@@ -48,56 +25,52 @@ $ARGUMENTS
 
 ## What to do
 
-1. **Read the file** specified in the argument (`.osop` or `.osoplog.yaml`)
+1. **Validate first**:
+   ```bash
+   osop validate <file>
+   ```
 
-2. **Analyze for risks** — check each node for:
-   - `security.risk_level: high|critical` without preceding `approval_gate`
-   - `security.permissions` containing broad patterns (`write:*`, `admin:*`, `delete:*`)
+2. **Read the file** and analyze for risks:
+
+   **For .osop workflows, check:**
    - `cli` nodes with destructive commands (`rm -rf`, `kubectl delete`, `terraform destroy`, `DROP TABLE`)
    - Hardcoded secrets (strings starting with `sk-`, `ghp_`, `xoxb-`, API keys)
-   - Agent nodes without `cost.estimated` (unbounded cost exposure)
-   - Missing `timeout_sec` on external call nodes (`api`, `cli`, `agent`, `infra`, `mcp`)
-   - Missing error handling (no `fallback`/`error` edge) on medium+ risk nodes
+   - `agent` nodes without cost constraints (unbounded LLM usage)
+   - `api` nodes calling external services without error handling
+   - Missing `fallback` edges on critical-path nodes
+   - Missing `human` approval before destructive `cli` steps
+
+   **For .osoplog execution logs, also check:**
+   - Which tools were actually used and how many calls
+   - Whether any nodes failed and why
+   - Total execution time — was it reasonable?
+   - Sub-agent hierarchy — was spawning appropriate?
 
 3. **Compute risk score** (0-100):
-   - Each node: `type_weight * risk_multiplier * mitigation_factor`
-   - Type weights: cli=2, infra=2, db=1.5, agent=1.5, docker=1.5, cicd=1.5, api=1, others=0.5-1
-   - Risk multiplier: low=1, medium=2, high=4, critical=8
-   - Mitigations: approval_gate=-50%, retry_policy=-10%, fallback_edge=-20%
-   - Finding penalty: low=+2, medium=+5, high=+10, critical=+20
 
-4. **Present findings** in a clear table:
+   | Node Type | Base Weight |
+   |-----------|------------|
+   | `cli` | 2.0 |
+   | `api` | 1.5 |
+   | `agent` | 1.5 |
+   | `human` | 0.5 |
+
+   Mitigations: human approval before risky step = -50%, fallback edge = -20%
+
+4. **Present findings**:
    ```
-   Risk Score: XX/100 — VERDICT (safe/caution/warning/danger)
-   
+   Risk Score: XX/100 — VERDICT
+
    | Severity | Finding | Node | Suggestion |
    |----------|---------|------|------------|
-   | CRITICAL | ... | ... | ... |
+   | HIGH | rm -rf in deploy step | deploy | Add human approval gate |
    ```
 
-5. **Summarize**:
-   - Total permissions required
-   - Secrets referenced
-   - Estimated cost (if any)
-   - Whether approval gates exist
-   - Final verdict: is this safe to run?
+   Verdicts: SAFE (0-25), CAUTION (26-50), WARNING (51-75), DANGER (76-100)
 
-## For .osoplog files
+5. **Summarize**: Is this workflow safe to run? What should be changed?
 
-If reviewing an execution log, also check:
-- Which tools were actually used and how many calls
-- Whether any nodes failed and why
-- AI reasoning decisions — were they sound?
-- Sub-agent hierarchy — was the spawning appropriate?
-- Total execution time and cost
+## OSOP Core types
 
-## Epilogue (run last)
-
-```bash
-_OSOP_TEL_END=$(date +%s)
-_OSOP_TEL_DUR=$(( _OSOP_TEL_END - _OSOP_TEL_START ))
-${CLAUDE_SKILL_DIR}/../../bin/osop-timeline-log --skill osop-review --event completed --duration "$_OSOP_TEL_DUR" --outcome "OUTCOME" --session "$_OSOP_SESSION_ID" 2>/dev/null || true
-${CLAUDE_SKILL_DIR}/../../bin/osop-telemetry-log --skill osop-review --duration "$_OSOP_TEL_DUR" --outcome "OUTCOME" --session-id "$_OSOP_SESSION_ID" 2>/dev/null &
-```
-
-Replace `OUTCOME` with `success` or `error`.
+4 node types: `agent`, `api`, `cli`, `human`
+4 edge modes: `sequential`, `parallel`, `conditional`, `fallback`
