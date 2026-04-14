@@ -18,7 +18,7 @@ tags: [aider, <relevant-tags>]
 
 nodes:
   - id: "<step-id>"
-    type: "<node-type>"   # human, agent, mcp, cli, api, cicd, git, db, docker, infra, system, event, gateway, data
+    type: "<node-type>"   # agent, api, cli, human (OSOP Core — 4 types only)
     subtype: "<subtype>"  # Optional: llm, explore, plan, worker, tool, test, commit, rest, script
     name: "<Step Name>"
     description: "<What this step does>"
@@ -28,7 +28,7 @@ nodes:
 edges:
   - from: "<step-a>"
     to: "<step-b>"
-    mode: "sequential"    # sequential, parallel, conditional, fallback, error, spawn, loop, timeout
+    mode: "sequential"    # sequential, parallel, conditional, fallback (4 modes only)
 ```
 
 ## .osoplog.yaml format (execution record)
@@ -77,13 +77,13 @@ result_summary: "<1-2 sentence summary>"
 
 | Agent Action | OSOP Node Type | Subtype |
 |---|---|---|
-| Read/explore files | `mcp` | `tool` |
-| Edit/write files | `mcp` | `tool` |
+| Read/explore files | `agent` | `llm` |
+| Edit/write files | `agent` | `llm` |
 | Run shell commands | `cli` | `script` |
-| Run tests | `cicd` | `test` |
-| Git operations | `git` | `commit` / `branch` / `pr` |
+| Run tests | `cli` | `test` |
+| Git operations | `cli` | `git` |
 | Analyze/reason about code | `agent` | `llm` |
-| Search codebase | `mcp` | `tool` |
+| Search codebase | `agent` | `llm` |
 | Ask user a question | `human` | `input` |
 | User reviews/approves | `human` | `review` |
 | API calls | `api` | `rest` |

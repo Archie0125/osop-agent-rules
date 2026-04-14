@@ -197,7 +197,7 @@ nodes:
     subtype: explore
     name: "Search Auth Code"
   - id: fix
-    type: mcp
+    type: agent
     name: "Write Fix"
 edges:
   - from: explore

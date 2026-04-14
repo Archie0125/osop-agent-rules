@@ -18,17 +18,15 @@ tags: [<agent-name>, <relevant-tags>]
 
 nodes:
   - id: "<step-id>"
-    type: "<node-type>"   # human, agent, mcp, cli, api, cicd, git, db, docker, infra, system, event, gateway, data
-    subtype: "<subtype>"  # Optional: llm, explore, plan, worker, tool, test, commit, rest, script
+    type: "<node-type>"   # agent, api, cli, human (OSOP Core — 4 types only)
+    subtype: "<subtype>"  # Optional: llm, explore, plan, script, test, rest, input, review
     name: "<Step Name>"
     description: "<What this step does>"
-    security:
-      risk_level: "<low|medium|high|critical>"  # Optional but recommended
 
 edges:
   - from: "<step-a>"
     to: "<step-b>"
-    mode: "sequential"    # sequential, parallel, conditional, fallback, error, spawn, loop, timeout
+    mode: "sequential"    # sequential, parallel, conditional, fallback (4 modes only)
 ```
 
 ## .osoplog.yaml format (execution record)
@@ -37,13 +35,7 @@ edges:
 osoplog_version: "1.0"
 run_id: "<uuid>"
 workflow_id: "<matches .osop id>"
-mode: "live"
 status: "COMPLETED"  # or FAILED
-
-trigger:
-  type: "manual"
-  actor: "user"
-  timestamp: "<ISO timestamp>"
 
 started_at: "<ISO timestamp>"
 ended_at: "<ISO timestamp>"
@@ -56,74 +48,48 @@ runtime:
 node_records:
   - node_id: "<step-id>"
     node_type: "<type>"
-    attempt: 1
     status: "COMPLETED"
     started_at: "<ISO>"
     ended_at: "<ISO>"
     duration_ms: <ms>
     outputs:
-      <what you produced — key findings, files changed, etc.>
+      <what you produced>
     tools_used:
       - { tool: "<tool-name>", calls: <n> }
-    reasoning:                    # Optional: for non-obvious decisions
-      question: "<what was decided>"
-      selected: "<chosen approach>"
-      confidence: <0.0-1.0>
 
 result_summary: "<1-2 sentence summary>"
 ```
 
-## Node type mapping
+## Node type mapping (OSOP Core — 4 types only)
 
-| Agent Action | OSOP Node Type | Subtype |
+| Agent Action | type | subtype |
 |---|---|---|
-| Read/explore files | `mcp` | `tool` |
-| Edit/write files | `mcp` | `tool` |
-| Run shell commands | `cli` | `script` |
-| Run tests | `cicd` | `test` |
-| Git operations | `git` | `commit` / `branch` / `pr` |
+| Read/explore/search files | `agent` | `llm` |
+| Edit/write/generate code | `agent` | `llm` |
 | Analyze/reason about code | `agent` | `llm` |
-| Search codebase | `mcp` | `tool` |
+| Plan/design | `agent` | `planner` |
+| Spawn sub-agent | `agent` | `explore` / `plan` |
+| Run shell commands | `cli` | `script` |
+| Run tests | `cli` | `test` |
+| Git operations | `cli` | `git` |
+| Install dependencies | `cli` | `script` |
+| API calls (HTTP) | `api` | `rest` |
 | Ask user a question | `human` | `input` |
 | User reviews/approves | `human` | `review` |
-| Spawn sub-agent | `agent` | `explore` / `plan` / `worker` |
-| API calls | `api` | `rest` |
-| Install dependencies | `cli` | `script` |
-| Generate code | `agent` | `llm` |
 
-## Sub-agent tracking
+## Edge modes (4 modes only)
 
-When spawning sub-agents, use `parent` on child nodes and `spawn` edge mode:
-
-```yaml
-nodes:
-  - id: "coordinator"
-    type: "agent"
-    subtype: "coordinator"
-  - id: "explore_1"
-    type: "agent"
-    subtype: "explore"
-    parent: "coordinator"
-
-edges:
-  - from: "coordinator"
-    to: "explore_1"
-    mode: "spawn"
-```
-
-In .osoplog, add `parent_id` and `spawn_index`:
-
-```yaml
-node_records:
-  - node_id: "explore_1"
-    parent_id: "coordinator"
-    spawn_index: 1
-```
+| Pattern | Mode |
+|---|---|
+| Step A then Step B | `sequential` (default) |
+| A and B at same time | `parallel` |
+| If condition... | `conditional` |
+| On failure... | `fallback` |
 
 ## Where to save
 
 Save to a `sessions/` directory in the project root:
-- `sessions/YYYY-MM-DD-<short-desc>.osop`
+- `sessions/YYYY-MM-DD-<short-desc>.osop.yaml`
 - `sessions/YYYY-MM-DD-<short-desc>.osoplog.yaml`
 
 ## When to generate
@@ -131,9 +97,8 @@ Save to a `sessions/` directory in the project root:
 - After completing multi-step tasks (3+ distinct steps)
 - After debugging sessions
 - After feature implementations
-- After refactoring work
 - When the user asks "what did you do?"
 
 ## What is OSOP?
 
-OSOP (Open Standard Operating Procedures) is a universal protocol for defining, validating, and executing process workflows. Learn more at https://osop.ai
+OSOP is the standard format for describing and logging AI agent workflows. 4 node types, 4 edge modes. Learn more at https://osop.ai
